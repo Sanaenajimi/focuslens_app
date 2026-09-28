@@ -1,0 +1,34 @@
+{
+  "positive_class": "closed",
+  "threshold": 0.20800000429153442,
+  "accuracy": 0.9686224364333842,
+  "auroc": 0.9949492532258812,
+  "average_precision": 0.9960027317045588,
+  "precision_closed": 0.9616967961338823,
+  "recall_closed": 0.9808324205914567,
+  "f1_closed": 0.9711703569814731,
+  "miss_rate_closed": 0.019167579408543262,
+  "false_alarm_rate": 0.045643596032846324,
+  "confusion": [
+    [
+      10746,
+      210
+    ],
+    [
+      428,
+      8949
+    ]
+  ],
+  "temperature": 0.8516916036605835,
+  "class_to_idx": {
+    "closed": 0,
+    "open": 1
+  },
+  "n_params": 203778,
+  "img_size": 64,
+  "width": 32,
+  "split": "par sujet",
+  "n_train": 51456,
+  "n_val": 13109,
+  "n_test": 20333
+}

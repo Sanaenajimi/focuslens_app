@@ -1,0 +1,11 @@
+{
+  "img_size": 64,
+  "width": 32,
+  "crop_pad": 0.35,
+  "threshold": 0.20800000429153442,
+  "temperature": 0.8516916036605835,
+  "class_to_idx": {
+    "closed": 0,
+    "open": 1
+  }
+}
