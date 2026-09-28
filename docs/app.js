@@ -31,18 +31,18 @@ window.addEventListener("hashchange", () => go(location.hash.slice(1) || "accuei
 // ══════════════════════════ contenu statique (méthode, tuiles accueil) ══════════════════════════
 
 document.getElementById("home-tiles").innerHTML = [
-  ["24 images/s", "Le visage est analysé sans interruption, calibration comprise."],
-  ["6 points par œil", "L'EAR se calcule sur six repères géométriques, comme en Python."],
+  ["Temps réel", "Le visage est analysé sans interruption avec une calibration pendant les 5 premières secondes."],
+  ["6 points par œil", "L'EAR se calcule sur six repères géométriques sur la paupière."],
   ["1,2 s", "Durée de fermeture au-delà de laquelle un micro-sommeil est détecté."],
 ].map(([v, s]) => `<div class="tile"><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
 document.getElementById("method-flow").innerHTML = [
-  ["468 points de visage", "MediaPipe FaceLandmarker place 468 repères sur le visage, le même modèle que le Python."],
+  ["468 points de visage", "MediaPipe FaceLandmarker place 468 repères sur le visage."],
   ["EAR et MAR", "Rapport hauteur/largeur de la paupière et de la bouche, calculé image par image."],
   ["Calibration personnelle", "Les 5 premières secondes fixent l'EAR de référence du conducteur."],
   ["Hystérésis", "Deux seuils distincts pour fermer et rouvrir, anti-oscillation."],
   ["PERCLOS sur 30 s", "Tendance de fond du temps yeux fermés sur fenêtre glissante."],
-  ["Arbitrage de la source", "L'EAR décide seul ; le CNN (si chargé) est consulté sur les images douteuses."],
+  ["Arbitrage de la source", "Arbitrage entre l'EAR et le CNN selon les conditions de détection de la caméra."],
 ].map(([h, p], i) => `<div class="step"><div class="n">Étape ${i+1}</div><h3>${h}</h3><p>${p}</p></div>`).join("");
 
 document.getElementById("method-vs").innerHTML = [
