@@ -160,7 +160,6 @@ function dashboardHTML() {
       </div>
     </div>`;
 }
-document.getElementById("dash-video").innerHTML = dashboardHTML();
 document.getElementById("dash-camera").innerHTML = dashboardHTML();
 
 // ══════════════════════════ MediaPipe : chargement une fois ══════════════════════════
@@ -211,7 +210,6 @@ async function tryLoadCNN() {
     document.getElementById("cnn-status").textContent =
       "non chargé (" + e.message + ") — mode EAR seul actif, pleinement fonctionnel.";
   }
-  renderModePicker("mode-video", cnnState.available);
   renderModePicker("mode-camera", cnnState.available);
 }
 
@@ -348,9 +346,7 @@ function triggerAlertAudio(audioState, level, t) {
 const ALERT_LABEL = { jaune: "Micro-sommeil (léger)", orange: "Micro-sommeil (modéré)", rouge: "Micro-sommeil critique" };
 
 /** Met à jour tout le panneau de droite (dial + reason + 6 mini-cartes + strip)
- * à partir d'un instantané de mesures. Ne dépend d'aucun état "live" : utilisée
- * telle quelle en direct (analyzeFrame) ET en replay (renderReplay), pour
- * garantir que le replay affiche EXACTEMENT la même chose que le direct. */
+ * à partir d'un instantané de mesures. */
 function renderMetrics(dash, ear, mar, yaw, pitch, pClosed, state) {
   const q = sel => dash.querySelector(sel);
   const panel = q("[data-panel-alert]");
@@ -489,63 +485,10 @@ function renderReport(container, ta, scoreHist) {
   `;
 }
 
-// ══════════════════════════ onglet vidéo ══════════════════════════
-
-const dropVideo = document.getElementById("drop-video");
-const fileVideo = document.getElementById("file-video");
-const runVideoBtn = document.getElementById("run-video");
-const dashVideo = document.getElementById("dash-video");
-let videoFile = null;
-
-fileVideo.addEventListener("change", () => {
-  if (!fileVideo.files.length) return;
-  videoFile = fileVideo.files[0];
-  dropVideo.classList.add("filled");
-  document.getElementById("drop-video-title").textContent = videoFile.name;
-  document.getElementById("drop-video-sub").textContent = `${(videoFile.size/1e6).toFixed(1)} Mo — prêt à analyser`;
-  runVideoBtn.disabled = false;
-});
-
-runVideoBtn.addEventListener("click", async () => {
-  runVideoBtn.disabled = true;
-  const mode = document.getElementById("mode-video").dataset.mode || "ear";
-  const videoEl = dashVideo.querySelector("[data-video]");
-  videoEl.hidden = false; videoEl.src = URL.createObjectURL(videoFile);
-  await new Promise(r => videoEl.onloadedmetadata = r);
-
-  const landmarker = await getLandmarker();
-  const ta = new TemporalAnalyzer(CFG, cnnState.meta?.threshold ?? null);
-  const scoreHist = [];
-  const audioState = newAlertAudioState();
-  videoEl.play();
-
-  const useVFC = "requestVideoFrameCallback" in videoEl;
-  await new Promise(resolve => {
-    const step = async (_now, metadata) => {
-      if (videoEl.ended || videoEl.paused) { resolve(); return; }
-      const t = metadata ? metadata.mediaTime : videoEl.currentTime;
-      await analyzeFrame(videoEl, landmarker, ta, mode, t, dashVideo, scoreHist, audioState);
-      const bar = dashVideo.querySelector("[data-bar]");
-      bar.style.width = Math.min(100, (videoEl.currentTime / videoEl.duration) * 100) + "%";
-      dashVideo.querySelector("[data-clock]").textContent =
-        new Date(videoEl.currentTime * 1000).toISOString().substr(14, 5);
-      if (useVFC) videoEl.requestVideoFrameCallback(step); else requestAnimationFrame(step);
-    };
-    if (useVFC) videoEl.requestVideoFrameCallback(step); else requestAnimationFrame(step);
-    videoEl.onended = resolve;
-  });
-
-  ta.finalize(videoEl.currentTime);
-  renderReport(document.getElementById("report-video"), ta, scoreHist);
-  runVideoBtn.disabled = false;
-});
-
 // ══════════════════════════ onglet caméra ══════════════════════════
 
 const runCameraBtn = document.getElementById("run-camera");
 const dashCamera = document.getElementById("dash-camera");
-const replayToggle = document.getElementById("replay-toggle");
-const replayContainer = document.getElementById("replay-camera");
 let sessionDuration = 30;
 document.getElementById("seg-duration").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -553,65 +496,19 @@ document.getElementById("seg-duration").addEventListener("click", e => {
   sessionDuration = parseInt(b.dataset.dur, 10);
 });
 
-// ─── Replay : TOUT reste en mémoire (RAM du navigateur), rien n'est écrit sur
-// disque, rien n'est envoyé sur le réseau. Aucun appel fetch/XHR n'existe dans
-// ce module — c'est vérifiable en lisant ce fichier. `currentReplay` est
-// explicitement révoqué et vidé à la purge, à l'arrêt d'une nouvelle session
-// et à la fermeture de l'onglet.
-let currentReplay = null; // { url, timeline }
-
-function purgeReplay() {
-  if (currentReplay?.url) URL.revokeObjectURL(currentReplay.url);
-  currentReplay = null;
-  replayContainer.hidden = true;
-  replayContainer.innerHTML = "";
-}
-window.addEventListener("beforeunload", purgeReplay);
-
-function renderReplay(blob, timeline) {
-  purgeReplay();
-  if (!timeline.length) return; // rien détecté pendant la session : pas de replay exploitable
-  const url = URL.createObjectURL(blob);
-  currentReplay = { url, timeline };
-  replayContainer.hidden = false;
-  replayContainer.innerHTML = `
-    <h3 style="font-size:1.05rem;margin-bottom:12px">Replay de la session (en mémoire — non sauvegardé)</h3>
-    <div class="dash">${dashboardHTML()}</div>
-    <div class="rbtns"><button class="btn btn-2" data-rpurge>Purger le replay</button></div>`;
-
-  const dash = replayContainer.querySelector(".dash");
-  const rvideo = dash.querySelector("[data-video]");
-  const rcanvas = dash.querySelector("[data-canvas]");
-  dash.querySelector("[data-ph]").hidden = true;
-  dash.querySelector("[data-barlab]").textContent = "Replay";
-  rvideo.hidden = false; rvideo.muted = false; rvideo.controls = true; rvideo.playsInline = true; rvideo.src = url;
-  rcanvas.hidden = false;
-
-  // timeline triée par t croissant (poussée frame par frame) → recherche dichotomique
-  const findEntry = (t) => {
-    let lo = 0, hi = timeline.length - 1;
-    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (timeline[mid].t <= t) lo = mid; else hi = mid - 1; }
-    return timeline[lo];
-  };
-
-  const draw = () => {
-    if (!rvideo.videoWidth) return;
-    const e = findEntry(rvideo.currentTime);
-    drawLandmarks(rcanvas, rvideo, e.pts);           // mêmes landmarks qu'en direct
-    renderMetrics(dash, e.ear, e.mar, e.yaw, e.pitch, e.pClosed, e.state); // même panneau qu'en direct
-    dash.querySelector("[data-bar]").style.width = Math.min(100, (rvideo.currentTime / rvideo.duration) * 100) + "%";
-    dash.querySelector("[data-clock]").textContent = new Date(rvideo.currentTime * 1000).toISOString().substr(14, 5);
-  };
-  rvideo.addEventListener("loadedmetadata", draw);
-  rvideo.addEventListener("timeupdate", draw);
-  rvideo.addEventListener("seeking", draw);
-  replayContainer.querySelector("[data-rpurge]").addEventListener("click", purgeReplay);
-}
+// ─── Confidentialité caméra ──────────────────────────────────────────────
+// Aucun appel fetch/XHR/WebSocket n'existe dans ce fichier pour le flux
+// caméra : les images ne quittent jamais l'appareil (vérifiable en lisant ce
+// fichier). Rien n'est écrit sur disque, en localStorage, sessionStorage ou
+// IndexedDB. Aucune piste audio n'est demandée à getUserMedia. Le flux caméra
+// (`stream`) est explicitement arrêté (`getTracks().forEach(tr => tr.stop())`)
+// dès la fin de la session, ce qui coupe le témoin caméra du système.
+// Seules des métriques numériques agrégées (scores, EAR, etc.) existent le
+// temps de la session, en mémoire JS, puis sont perdues à la fermeture ou à
+// la navigation — rien n'est conservé, ni côté client ni côté serveur.
 
 runCameraBtn.addEventListener("click", async () => {
   runCameraBtn.disabled = true;
-  purgeReplay();
-  const wantsReplay = replayToggle.checked;
   const mode = document.getElementById("mode-camera").dataset.mode || "ear";
   const videoEl = dashCamera.querySelector("[data-video]");
   let stream;
@@ -626,33 +523,17 @@ runCameraBtn.addEventListener("click", async () => {
   await new Promise(r => videoEl.onloadedmetadata = r);
   videoEl.play();
 
-  // Le modèle est chargé AVANT de démarrer l'enregistrement et l'horloge t0 :
-  // sinon le temps de chargement (await) se glisse entre recorder.start() et
-  // t0, et décale en permanence les landmarks par rapport à la vidéo au replay.
   const landmarker = await getLandmarker();
   const ta = new TemporalAnalyzer(CFG, cnnState.meta?.threshold ?? null);
   const scoreHist = [];
   const audioState = newAlertAudioState();
-  const timeline = wantsReplay ? [] : null;
-
-  // Enregistrement en mémoire uniquement (aucune piste audio demandée à
-  // getUserMedia plus haut, donc rien de vocal n'est jamais capturé).
-  let recorder = null, chunks = [];
-  if (wantsReplay && "MediaRecorder" in window) {
-    try {
-      recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      recorder.ondataavailable = (ev) => { if (ev.data.size) chunks.push(ev.data); };
-    } catch (e) { recorder = null; }
-  }
-  // start() et t0 dans le même tick : c'est l'origine commune des deux horloges.
   const t0 = performance.now();
-  if (recorder) recorder.start();
 
   await new Promise(resolve => {
     const step = async () => {
       const elapsed = (performance.now() - t0) / 1000;
       if (elapsed >= sessionDuration) { resolve(); return; }
-      await analyzeFrame(videoEl, landmarker, ta, mode, elapsed, dashCamera, scoreHist, audioState, timeline);
+      await analyzeFrame(videoEl, landmarker, ta, mode, elapsed, dashCamera, scoreHist, audioState);
       dashCamera.querySelector("[data-bar]").style.width = Math.min(100, (elapsed / sessionDuration) * 100) + "%";
       dashCamera.querySelector("[data-clock]").textContent = elapsed.toFixed(0) + "s";
       requestAnimationFrame(step);
@@ -663,21 +544,11 @@ runCameraBtn.addEventListener("click", async () => {
   stream.getTracks().forEach(tr => tr.stop());
   ta.finalize(sessionDuration);
   renderReport(document.getElementById("report-camera"), ta, scoreHist);
-
-  if (recorder) {
-    await new Promise(r => { recorder.onstop = r; recorder.stop(); });
-    if (chunks.length) {
-      const blob = new Blob(chunks, { type: "video/webm" });
-      chunks = []; // on ne garde que le Blob final, pas les morceaux intermédiaires
-      renderReplay(blob, timeline);
-    }
-  }
   runCameraBtn.disabled = false;
 });
 
 // ══════════════════════════ démarrage ══════════════════════════
 
-renderModePicker("mode-video", false);
 renderModePicker("mode-camera", false);
 tryLoadCNN();
 go(location.hash.slice(1) || "accueil");

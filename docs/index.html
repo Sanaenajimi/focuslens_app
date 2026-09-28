@@ -167,22 +167,10 @@ section[data-view].on{display:block}
 .mini.dim{opacity:.42}
 .mini.flag{box-shadow:inset 0 0 0 2px #E8A33D}
 
-/* --- Replay --- */
-.replay-toggle{display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:.87rem;color:var(--dim);max-width:52ch}
-.replay-toggle input{margin-top:3px}
+/* --- Note de confidentialité (section caméra) --- */
+.replay-toggle{margin-top:14px;font-size:.87rem;color:var(--dim);max-width:52ch}
 .replay-toggle b{color:var(--ink);display:block;font-weight:600;margin-bottom:2px}
-.replay{margin-top:22px}
-.replay .stage{aspect-ratio:16/10}
-.replay .rmeta{margin-top:10px;font-size:.85rem;color:var(--dim)}
-.replay .rbtns{display:flex;gap:10px;margin-top:12px}
 
-.drop{border-radius:var(--r-panel);padding:40px 26px;text-align:center;background:var(--panel);
-  cursor:pointer;position:relative;box-shadow:inset 0 0 0 1px var(--line)}
-.drop:hover{box-shadow:inset 0 0 0 2px var(--teal)}
-.drop.filled{box-shadow:inset 0 0 0 2px var(--teal)}
-.drop h3{font-size:1.2rem;font-weight:var(--w-h2)}
-.drop p{color:var(--dim);font-size:.9rem;margin-top:6px}
-.drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
 .ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
 .seg{display:inline-flex;background:var(--track);border-radius:var(--r-pill);padding:3px}
 .seg button{padding:8px 16px;border-radius:var(--r-pill);font-size:.87rem;font-weight:500;color:var(--dim)}
@@ -236,7 +224,6 @@ footer.foot .wrap{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-bet
   <span class="brand"><i></i>FocusLens</span>
   <nav class="tabs">
     <a class="tab" href="#accueil" data-go="accueil">Accueil</a>
-    <a class="tab" href="#video" data-go="video">Analyser une vidéo</a>
     <a class="tab" href="#camera" data-go="camera">Caméra live</a>
     <a class="tab" href="#methode" data-go="methode">Comment ça marche</a>
   </nav>
@@ -259,8 +246,7 @@ footer.foot .wrap{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-bet
         <p class="sub">Une caméra suit les paupières du conducteur 24 fois par seconde grâce à un vrai
         modèle MediaPipe et un CNN entraîné — pas une démo scriptée.</p>
         <div class="cta">
-          <button class="btn btn-1" data-go="video">Analyser une vidéo</button>
-          <button class="btn btn-2" data-go="camera"><span class="dot"></span>Activer ma caméra</button>
+          <button class="btn btn-1" data-go="camera"><span class="dot"></span>Activer ma caméra</button>
         </div>
       </div>
     </div>
@@ -271,26 +257,6 @@ footer.foot .wrap{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-bet
   </div>
   <div class="wrap" style="margin-top:26px">
     <div class="mrow" id="home-tiles"></div>
-  </div>
-</section>
-
-<section data-view="video">
-  <div class="wrap head">
-    <h2>Analyser une vidéo</h2>
-    <p>Dépose un enregistrement de conduite. L'analyse tourne entièrement dans ton navigateur — rien n'est envoyé sur un serveur.</p>
-  </div>
-  <div class="wrap">
-    <div class="drop" id="drop-video">
-      <h3 id="drop-video-title">Dépose ton fichier ici</h3>
-      <p id="drop-video-sub">mp4, webm ou mov — ou clique pour parcourir</p>
-      <input type="file" id="file-video" accept="video/*">
-    </div>
-    <div id="mode-video" class="modebox"></div>
-    <div class="ctrl">
-      <button class="btn btn-1" id="run-video" disabled>Lancer l'analyse</button>
-    </div>
-    <div class="dash" id="dash-video"></div>
-    <div class="report" id="report-video" hidden></div>
   </div>
 </section>
 
@@ -310,16 +276,14 @@ footer.foot .wrap{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-bet
       </div>
       <button class="btn btn-1" id="run-camera"><span class="dot"></span>Autoriser la caméra et démarrer</button>
     </div>
-    <label class="replay-toggle">
-      <input type="checkbox" id="replay-toggle">
-      <span><b>Activer le replay de cette session</b>
-        Vidéo + métriques gardées en mémoire vive le temps de la session, pour rejouer l'analyse a posteriori.
-        Aucun enregistrement disque, aucun envoi réseau, aucune trace dans les logs — tout est effacé à la fermeture
-        de l'onglet ou en cliquant sur « Purger ».</span>
-    </label>
+    <p class="replay-toggle" style="display:block;margin-top:14px">
+      <b style="color:var(--ink);font-weight:600;margin-bottom:2px">Confidentialité</b>
+      Le flux caméra est traité entièrement dans ton navigateur, image par image, et n'est jamais enregistré,
+      envoyé sur un serveur ni conservé après la session. Aucun fichier, aucune trace, aucun cookie lié à la caméra.
+      La caméra est coupée automatiquement à la fin de la session.
+    </p>
     <div class="dash" id="dash-camera"></div>
     <div class="report" id="report-camera" hidden></div>
-    <div class="replay" id="replay-camera" hidden></div>
   </div>
 </section>
 
